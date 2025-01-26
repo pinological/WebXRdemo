@@ -77,31 +77,32 @@
         }
 
         function onSelect() {
-            if (reticle.visible) {
-                // Remove previous model if exists
-                if (currentModel) {
-                    scene.remove(currentModel);
-                    currentModel = null;
-                }
-
-                // Load new model
-                const loader = new GLTFLoader();
-                loader.load(
-                    'models/sunwayBuildingads.glb',
-                    (gltf) => {
-                        currentModel = gltf.scene;
-                        reticle.matrix.decompose(currentModel.position, currentModel.quaternion, currentModel.scale);
-                        currentModel.scale.multiplyScalar(0.3);
-                        currentModel.rotation.y = Math.PI;
-                        scene.add(currentModel);
-                    },
-                    undefined,
-                    (error) => {
-                        console.error('Error loading model:', error);
-                    }
-                );
-            }
+    if (reticle.visible) {
+        // Remove the previous model if exists
+        if (currentModel) {
+            scene.remove(currentModel);
+            currentModel = null;
         }
+
+        // Load a new model
+        const loader = new GLTFLoader();
+        loader.load(
+            'models/sunwayBuildingads.glb',
+            (gltf) => {
+                currentModel = gltf.scene;
+                reticle.matrix.decompose(currentModel.position, currentModel.quaternion, currentModel.scale);
+                currentModel.scale.multiplyScalar(0.3);
+                currentModel.rotation.y = Math.PI;
+                scene.add(currentModel);
+            },
+            undefined,
+            (error) => {
+                console.error('Error loading model:', error);
+            }
+        );
+    }
+}
+
 
         function animate(timestamp, frame) {
             if (frame) {
