@@ -89,8 +89,8 @@
                     function (gltf) {
                         const model = gltf.scene;
                         reticle.matrix.decompose(model.position, model.quaternion, model.scale);
-                        reticle.matrix.decompose(model.position, model.quaternion, model.scale);
-                        model.scale.multiplyScalar(0.1); // Reduce scale to 10% of reticle's scale
+                        model.scale.multiplyScalar(0.2); // Reduce scale to 10% of reticle's scale
+                        model.rotation.y = Math.PI / 2;
                         scene.add(model);
                         modelLoaded = true; // Disable further interactions
                     },
