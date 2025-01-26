@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>three.js AR - Single Tap to Render Model</title>
+    <title>three.js AR - Tap to Place/Replace Model</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link type="text/css" rel="stylesheet" href="main.css">
 </head>
 <body>
     <div id="info">
-        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> AR - Single Tap to Render Model<br/>(Chrome Android 81+)
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> AR - Tap to Place/Replace Model<br/>(Chrome Android 81+)
     </div>
 
-    <!-- Import Map for Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -29,10 +28,8 @@
         let container;
         let camera, scene, renderer;
         let controller;
-
         let reticle;
-        let modelLoaded = false; // Flag to track if the model has been loaded
-
+        let currentModel = null; // Track the current model instance
         let hitTestSource = null;
         let hitTestSourceRequested = false;
 
@@ -43,7 +40,6 @@
             document.body.appendChild(container);
 
             scene = new THREE.Scene();
-
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
             const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3);
@@ -81,37 +77,29 @@
         }
 
         function onSelect() {
-            if (reticle.visible && !modelLoaded) {
-                // Load your custom 3D model
+            if (reticle.visible) {
+                // Remove previous model if exists
+                if (currentModel) {
+                    scene.remove(currentModel);
+                    currentModel = null;
+                }
+
+                // Load new model
                 const loader = new GLTFLoader();
                 loader.load(
-                        'models/sunwayBuilding.glb',
-                        function (gltf) {
-                            const model = gltf.scene;
-                            reticle.matrix.decompose(model.position, model.quaternion, model.scale);
-                            model.scale.multiplyScalar(0.3);
-
-                            // Calculate direction from model to camera in XZ plane
-                            const cameraPosition = new THREE.Vector3();
-                            camera.getWorldPosition(cameraPosition); // Get camera's world position
-                            const modelPosition = model.position.clone();
-                            const direction = new THREE.Vector3().subVectors(cameraPosition, modelPosition);
-                            direction.y = 0; // Ignore vertical component
-
-                            if (direction.length() > 0) {
-                                direction.normalize();
-                                const angle = Math.atan2(direction.z, direction.x);
-                                model.rotation.y = angle; // Rotate model to face the camera
-                            }
-
-                            scene.add(model);
-                            modelLoaded = true;
-                        },
-                        undefined,
-                        function (error) {
-                            console.error('Error loading model:', error);
-                        }
-                    );
+                    'models/sunwayBuilding.glb',
+                    (gltf) => {
+                        currentModel = gltf.scene;
+                        reticle.matrix.decompose(currentModel.position, currentModel.quaternion, currentModel.scale);
+                        currentModel.scale.multiplyScalar(0.3);
+                        currentModel.rotation.y = Math.PI;
+                        scene.add(currentModel);
+                    },
+                    undefined,
+                    (error) => {
+                        console.error('Error loading model:', error);
+                    }
+                );
             }
         }
 
@@ -120,14 +108,14 @@
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const session = renderer.xr.getSession();
 
-                if (hitTestSourceRequested === false) {
-                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
-                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) {
+                if (!hitTestSourceRequested) {
+                    session.requestReferenceSpace('viewer').then((referenceSpace) => {
+                        session.requestHitTestSource({ space: referenceSpace }).then((source) => {
                             hitTestSource = source;
                         });
                     });
 
-                    session.addEventListener('end', function () {
+                    session.addEventListener('end', () => {
                         hitTestSourceRequested = false;
                         hitTestSource = null;
                     });
@@ -137,13 +125,11 @@
 
                 if (hitTestSource) {
                     const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    reticle.visible = hitTestResults.length > 0;
 
                     if (hitTestResults.length) {
                         const hit = hitTestResults[0];
-                        reticle.visible = true;
                         reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                    } else {
-                        reticle.visible = false;
                     }
                 }
             }
