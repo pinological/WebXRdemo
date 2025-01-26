@@ -5,8 +5,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link type="text/css" rel="stylesheet" href="main.css">
-    <!-- Leva CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leva@0.9.35/dist/leva.min.css" />
 </head>
 <body>
     <div id="info">
@@ -18,8 +16,7 @@
         {
             "imports": {
                 "three": "https://unpkg.com/three@latest/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@latest/examples/jsm/",
-                "leva": "https://unpkg.com/leva@0.9.35/dist/leva.module.js"
+                "three/addons/": "https://unpkg.com/three@latest/examples/jsm/"
             }
         }
     </script>
@@ -28,16 +25,16 @@
         import * as THREE from 'three';
         import { ARButton } from 'three/addons/webxr/ARButton.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { create } from 'leva';
 
         let container;
         let camera, scene, renderer;
         let controller;
+
         let reticle;
-        let modelLoaded = false;
+        let modelLoaded = false; // Flag to track if the model has been loaded
+
         let hitTestSource = null;
         let hitTestSourceRequested = false;
-        let currentModel = null; // Reference to the loaded model
 
         init();
 
@@ -46,6 +43,7 @@
             document.body.appendChild(container);
 
             scene = new THREE.Scene();
+
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
             const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3);
@@ -76,23 +74,6 @@
             window.addEventListener('resize', onWindowResize);
         }
 
-        function setupModelControls() {
-            const gui = create();
-            const folder = gui.addFolder('Model Controls');
-            
-            // Scale controls
-            folder.add(currentModel.scale, 'x', 0.1, 5, 0.1).name('Scale X');
-            folder.add(currentModel.scale, 'y', 0.1, 5, 0.1).name('Scale Y');
-            folder.add(currentModel.scale, 'z', 0.1, 5, 0.1).name('Scale Z');
-
-            // Rotation controls (in radians)
-            folder.add(currentModel.rotation, 'x', -Math.PI, Math.PI, 0.01).name('Rotation X');
-            folder.add(currentModel.rotation, 'y', -Math.PI, Math.PI, 0.01).name('Rotation Y');
-            folder.add(currentModel.rotation, 'z', -Math.PI, Math.PI, 0.01).name('Rotation Z');
-            
-            folder.open();
-        }
-
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -101,30 +82,20 @@
 
         function onSelect() {
             if (reticle.visible && !modelLoaded) {
+                // Load your custom 3D model
                 const loader = new GLTFLoader();
                 loader.load(
-                    'models/sunwayBuilding.glb',
-                    (gltf) => {
-                        currentModel = gltf.scene;
-                        
-                        // Position model at reticle
-                        reticle.matrix.decompose(
-                            currentModel.position,
-                            currentModel.quaternion,
-                            currentModel.scale
-                        );
-                        
-                        // Reset scale to 1 for easier control
-                        currentModel.scale.set(1, 1, 1);
-                        
-                        scene.add(currentModel);
-                        modelLoaded = true;
-                        
-                        // Setup Leva controls after model loads
-                        setupModelControls();
+                    'models/sunwayBuilding.glb', // Replace with the path to your model
+                    function (gltf) {
+                        const model = gltf.scene;
+                        reticle.matrix.decompose(model.position, model.quaternion, model.scale);
+                        scene.add(model);
+                        modelLoaded = true; // Disable further interactions
                     },
                     undefined,
-                    (error) => console.error('Error loading model:', error)
+                    function (error) {
+                        console.error('Error loading model:', error);
+                    }
                 );
             }
         }
@@ -135,13 +106,13 @@
                 const session = renderer.xr.getSession();
 
                 if (hitTestSourceRequested === false) {
-                    session.requestReferenceSpace('viewer').then((referenceSpace) => {
-                        session.requestHitTestSource({ space: referenceSpace }).then((source) => {
+                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
+                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) {
                             hitTestSource = source;
                         });
                     });
 
-                    session.addEventListener('end', () => {
+                    session.addEventListener('end', function () {
                         hitTestSourceRequested = false;
                         hitTestSource = null;
                     });
@@ -151,6 +122,7 @@
 
                 if (hitTestSource) {
                     const hitTestResults = frame.getHitTestResults(hitTestSource);
+
                     if (hitTestResults.length) {
                         const hit = hitTestResults[0];
                         reticle.visible = true;
