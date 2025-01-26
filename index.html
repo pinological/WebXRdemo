@@ -1,41 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>AR Model Controls</title>
+    <title>three.js AR - Single Tap to Render Model</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <style>
-        .controls {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            z-index: 1000;
-        }
-        .control-btn {
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            touch-action: manipulation;
-        }
-    </style>
+    <link type="text/css" rel="stylesheet" href="main.css">
 </head>
 <body>
     <div id="info">
-        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> AR - On-screen Controls
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> AR - Single Tap to Render Model<br/>(Chrome Android 81+)
     </div>
 
-    <div class="controls">
-        <button class="control-btn" id="scale-up">+</button>
-        <button class="control-btn" id="scale-down">-</button>
-        <button class="control-btn" id="rotate-left">↶</button>
-        <button class="control-btn" id="rotate-right">↷</button>
-    </div>
-
+    <!-- Import Map for Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -50,11 +26,15 @@
         import { ARButton } from 'three/addons/webxr/ARButton.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        let container, camera, scene, renderer, controller, reticle;
-        let modelLoaded = false;
+        let container;
+        let camera, scene, renderer;
+        let controller;
+
+        let reticle;
+        let modelLoaded = false; // Flag to track if the model has been loaded
+
         let hitTestSource = null;
         let hitTestSourceRequested = false;
-        let currentModel = null;
 
         init();
 
@@ -63,6 +43,7 @@
             document.body.appendChild(container);
 
             scene = new THREE.Scene();
+
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
             const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3);
@@ -90,32 +71,7 @@
             reticle.visible = false;
             scene.add(reticle);
 
-            setupControls();
             window.addEventListener('resize', onWindowResize);
-        }
-
-        function setupControls() {
-            const scaleStep = 0.1;
-            
-            document.getElementById('scale-up').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (currentModel) currentModel.scale.multiplyScalar(1 + scaleStep);
-            });
-
-            document.getElementById('scale-down').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (currentModel) currentModel.scale.multiplyScalar(1 - scaleStep);
-            });
-
-            document.getElementById('rotate-left').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (currentModel) currentModel.rotation.y += 0.1;
-            });
-
-            document.getElementById('rotate-right').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (currentModel) currentModel.rotation.y -= 0.1;
-            });
         }
 
         function onWindowResize() {
@@ -126,22 +82,22 @@
 
         function onSelect() {
             if (reticle.visible && !modelLoaded) {
+                // Load your custom 3D model
                 const loader = new GLTFLoader();
                 loader.load(
-                    'models/sunwayBuilding.glb',
-                    (gltf) => {
-                        currentModel = gltf.scene;
-                        reticle.matrix.decompose(
-                            currentModel.position,
-                            currentModel.quaternion,
-                            currentModel.scale
-                        );
-                        currentModel.scale.set(1, 1, 1);
-                        scene.add(currentModel);
-                        modelLoaded = true;
+                    'models/sunwayBuilding.glb', // Replace with the path to your model
+                    function (gltf) {
+                        const model = gltf.scene;
+                        reticle.matrix.decompose(model.position, model.quaternion, model.scale);
+                        reticle.matrix.decompose(model.position, model.quaternion, model.scale);
+                        model.scale.multiplyScalar(0.1); // Reduce scale to 10% of reticle's scale
+                        scene.add(model);
+                        modelLoaded = true; // Disable further interactions
                     },
                     undefined,
-                    (error) => console.error('Error loading model:', error)
+                    function (error) {
+                        console.error('Error loading model:', error);
+                    }
                 );
             }
         }
@@ -151,14 +107,14 @@
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const session = renderer.xr.getSession();
 
-                if (!hitTestSourceRequested) {
-                    session.requestReferenceSpace('viewer').then((referenceSpace) => {
-                        session.requestHitTestSource({ space: referenceSpace }).then((source) => {
+                if (hitTestSourceRequested === false) {
+                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
+                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) {
                             hitTestSource = source;
                         });
                     });
 
-                    session.addEventListener('end', () => {
+                    session.addEventListener('end', function () {
                         hitTestSourceRequested = false;
                         hitTestSource = null;
                     });
@@ -168,12 +124,17 @@
 
                 if (hitTestSource) {
                     const hitTestResults = frame.getHitTestResults(hitTestSource);
-                    reticle.visible = hitTestResults.length > 0;
-                    if (reticle.visible) {
-                        reticle.matrix.fromArray(hitTestResults[0].getPose(referenceSpace).transform.matrix);
+
+                    if (hitTestResults.length) {
+                        const hit = hitTestResults[0];
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                    } else {
+                        reticle.visible = false;
                     }
                 }
             }
+
             renderer.render(scene, camera);
         }
     </script>
