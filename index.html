@@ -5,43 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link type="text/css" rel="stylesheet" href="main.css">
-    <style>
-        .controls {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    background: rgba(255, 255, 255, 0.8);
-    padding: 15px;
-    border-radius: 5px;
-    z-index: 1000;
-}
-
-.controls label {
-    display: block;
-    margin-bottom: 10px;
-    font-family: Arial, sans-serif;
-    color: #333;
-}
-
-.controls input {
-    margin-left: 10px;
-    width: 60px;
-    padding: 3px;
-}
-    </style>
 </head>
 <body>
     <div id="info">
-        <div class="controls">
-            <label>
-                Scale Factor: 
-                <input type="number" id="scaleInput" value="0.2" step="0.1" min="0.1" max="2">
-            </label>
-            <label>
-                Rotation (degrees): 
-                <input type="number" id="rotationInput" value="90" step="15" min="0" max="360">
-            </label>
-        </div>
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> AR - Single Tap to Render Model<br/>(Chrome Android 81+)
     </div>
 
     <!-- Import Map for Three.js -->
@@ -118,27 +85,33 @@
                 // Load your custom 3D model
                 const loader = new GLTFLoader();
                 loader.load(
-                    'models/sunwayBuilding.glb',
-                    function (gltf) {
-                        const model = gltf.scene;
-                        reticle.matrix.decompose(model.position, model.quaternion, model.scale);
-                        
-                        // Get values from input fields
-                        const scaleValue = parseFloat(document.getElementById('scaleInput').value);
-                        const rotationDegrees = parseFloat(document.getElementById('rotationInput').value);
-                        
-                        // Apply scale and rotation
-                        model.scale.multiplyScalar(scaleValue);
-                        model.rotation.y = THREE.MathUtils.degToRad(rotationDegrees);
-                        
-                        scene.add(model);
-                        modelLoaded = true;
-                    },
-                    undefined,
-                    function (error) {
-                        console.error('Error loading model:', error);
-                    }
-                );
+                        'models/sunwayBuilding.glb',
+                        function (gltf) {
+                            const model = gltf.scene;
+                            reticle.matrix.decompose(model.position, model.quaternion, model.scale);
+                            model.scale.multiplyScalar(0.3);
+
+                            // Calculate direction from model to camera in XZ plane
+                            const cameraPosition = new THREE.Vector3();
+                            camera.getWorldPosition(cameraPosition); // Get camera's world position
+                            const modelPosition = model.position.clone();
+                            const direction = new THREE.Vector3().subVectors(cameraPosition, modelPosition);
+                            direction.y = 0; // Ignore vertical component
+
+                            if (direction.length() > 0) {
+                                direction.normalize();
+                                const angle = Math.atan2(direction.z, direction.x);
+                                model.rotation.y = angle; // Rotate model to face the camera
+                            }
+
+                            scene.add(model);
+                            modelLoaded = true;
+                        },
+                        undefined,
+                        function (error) {
+                            console.error('Error loading model:', error);
+                        }
+                    );
             }
         }
 
