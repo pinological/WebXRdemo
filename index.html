@@ -122,7 +122,7 @@
                 // Load your custom 3D model
                 const loader = new GLTFLoader();
                 loader.load(
-                    'path/to/your/model.glb', // Replace with the path to your model
+                    'models/sunway Building.glb', // Replace with the path to your model
                     function (gltf) {
                         model = gltf.scene;
                         reticle.matrix.decompose(model.position, model.quaternion, model.scale);
